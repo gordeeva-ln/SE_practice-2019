@@ -7,6 +7,7 @@ Support commands:
 3. wc [FILE] (or stdin)
 4. pwd
 5. exit
+6. grep
 
 Сonsists of 2 structs:
 
@@ -42,6 +43,12 @@ Command sequence:
                                                                         2.echo
                                                                         3.wc
                                                                         4.pwd
+                                                                        5.grep
+
+Command grep support 3 keys:
+1. -i - ignore-case
+2. -w - word-regexp
+3. -A - after-context
 
 '''
 
@@ -49,10 +56,12 @@ Command sequence:
 import subprocess
 import sys
 import os
+import re
+import argparse
 
 
 # names of possible commands
-commands = ["cat", "echo", "wc", "pwd", "exit"]
+commands = ["cat", "echo", "wc", "pwd", "exit", "grep" ]
 
 # names and values of variables
 variables = {}
@@ -221,6 +230,8 @@ def exec_part_of_pipe(command):
         return wc(command.args, command.std)
     if command.name == "pwd":
         return pwd()
+    if command.name == "grep":
+        return grep(command.args)
     if command.name == "initialize":
         return ""
     try:
@@ -313,6 +324,84 @@ def pwd():
     return os.path.abspath(os.curdir)
 
 
+# grep - function
+def grep(args):
+    next_arg = args
+    new_arg = []
+    not_propose_arg = 0
+    while next_arg:
+        new_arg.append(next_arg.name)
+        if next_arg.name.startswith("-"):
+            not_propose_arg += 1
+        next_arg = next_arg.next
+    prop = len(new_arg) - 2 * not_propose_arg
+    print(new_arg)
+    file = None
+    if prop > 1:
+        file = new_arg[-1]
+        new_arg.pop()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("reg", type=str, help="regex")
+    parser.add_argument("-A", "--after_context", dest="A", type=int, default=0,
+                        help="Print  NUM  lines  of  trailing  context  after  matching lines.")
+    parser.add_argument("-i", "--ignore_case", action="store_true",
+                        help="Ignore case distinctions, so that \
+                        characters that differ only in case match each other.")
+    parser.add_argument("-w", "--word_regexp", action="store_true",
+                        help="Select  only  those  lines  containing \
+                         matches  that form whole words.")
+
+    args_from_parse = parser.parse_args(new_arg)
+    answer = ""
+    print(file)
+    if file:
+        f = open(file)
+        last_str = 0
+        numb = 0
+        for line in f:
+            numb += 1
+            if args_from_parse.ignore_case and args_from_parse.word_regexp:
+                res = re.findall(" " + args_from_parse.reg + " ", line, re.IGNORECASE)
+            elif args_from_parse.ignore_case:
+                res = re.findall(args_from_parse.reg, line, re.IGNORECASE)
+            elif args_from_parse.word_regexp:
+                res = re.findall(" " + args_from_parse.reg + " ", line)
+            else:
+                res = re.findall(args_from_parse.reg, line)
+            if res:
+                last_str = numb
+                answer += line + "\n"
+
+        if last_str:
+            print(file[last_str - 1:])
+        f.close()
+    else:
+        numb = 0
+        need_to_print = False
+        if args.A:
+            numb = 1
+        while True:
+            line = input()
+            if not line:
+                return "Exit grep"
+            if need_to_print:
+                print(line)
+                need_to_print -= 1
+            if args.ignore_case and args.word_regexp:
+                res = re.findall(" " + args.reg + " ", line, re.IGNORECASE)
+            elif args.ignore_case:
+                res = re.findall(args.reg, line, re.IGNORECASE)
+            elif args.word_regexp:
+                res = re.findall(" " + args.reg + " ", line)
+            else:
+                res = re.findall(args.reg, line)
+            if res:
+                need_to_print = args.A
+                numb += 1
+                print(line)
+    return answer
+
+
 class CLI:
     def start(self):
         while True:
@@ -357,9 +446,16 @@ def pwd_test():
     assert (test("pwd") == "D:\ИТМО\Весна 2019\Архитектура ПО\CLI")
 
 
+def grep_test():
+    assert (test("grep 'a' name.txt") == "aaaa")
+    assert (test("grep 'a' a") == "a")
+    assert (test("grep 'aaa' a") == "")
+
+
 if __name__ == '__main__':
     main()
     # echo_test()
     # cat_test()
     # wc_test()
     # pwd_test()
+    # grep_test()
