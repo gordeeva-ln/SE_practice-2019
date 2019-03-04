@@ -8,6 +8,7 @@ Support commands:
 3. wc [FILE] (or stdin)
 4. pwd
 5. exit
+6. grep
 
 Сonsists of 2 structs:
 
@@ -23,3 +24,7 @@ Command sequence:
 3. expansions
 4. execution
 
+Command grep support 3 keys:
+1. -i - ignore-case
+2. -w - word-regexp
+3. -A - after-context
